@@ -10,7 +10,11 @@ class Postgresql:
 
     def __init__(self, config):
         self.name = config["name"]
-        self.host, self.port = config["listen"].split(":")
+        self.params = config.get('parameters', {})
+        self.listen_addrs = self.params.get('listen_addresses', 'localhost') \
+                                       .split(',')
+        self.host = self.listen_addrs[0]
+        self.port = self.params.get('port', 5432)
         self.data_dir = config["data_dir"]
         self.replication = config["replication"]
 
@@ -154,9 +158,13 @@ class Postgresql:
         return member
 
     def write_pg_hba(self):
-        f = open("%s/pg_hba.conf" % self.data_dir, "a")
-        f.write("host replication %(username)s %(network)s md5" %
-                {"username": self.replication["username"], "network": self.replication["network"]})
+        pg_hba = self.params.get('hba_file',
+                                 '{}/pg_hba.conf'.format(self.data_dir))
+        with open(pg_hba, "a"):
+            f.write("local all postgres trust")
+            f.write("host replication %(username)s %(network)s md5" %
+                    {"username": self.replication["username"],
+                     "network": self.replication["network"]})
         f.close()
 
     def write_recovery_conf(self, leader_hash):
