@@ -59,6 +59,7 @@ class Postgresql:
         return not os.path.exists(self.data_dir) or os.listdir(self.data_dir) == []
 
     def initialize(self):
+        logger.info("Initializing cluster in %s" % self.data_dir)
         if os.system("initdb -D %s" % self.data_dir) == 0:
             # start Postgres without options to setup replication user indepedent of other system settings
             os.system("pg_ctl start -w -D %s -o '%s'" % (self.data_dir, self.server_options()))
@@ -67,11 +68,14 @@ class Postgresql:
             self.write_pg_hba()
 
             return True
+        else:
+            logger.error("Could not initialize cluster in %s" % self.data_dir)
 
-        return False
+            return False
 
     def sync_from_leader(self, leader):
         leader = urlparse(leader["address"])
+        logger.info("Syncing base backup from leader %s" % leader.hostname)
 
         f = open("./pgpass", "w")
         f.write("%(hostname)s:%(port)s:*:%(username)s:%(password)s\n" %
@@ -161,11 +165,12 @@ class Postgresql:
         pg_hba = self.params.get('hba_file',
                                  '{}/pg_hba.conf'.format(self.data_dir))
         with open(pg_hba, "a"):
-            f.write("local all postgres trust")
             f.write("host replication %(username)s %(network)s md5" %
                     {"username": self.replication["username"],
                      "network": self.replication["network"]})
-        f.close()
+
+            for entry in self.config.get('hba_entries') or []:
+                f.write(entry)
 
     def write_recovery_conf(self, leader_hash):
         f = open("%s/recovery.conf" % self.data_dir, "w")
