@@ -61,7 +61,7 @@ class Postgresql:
 
     def drop_cluster(self):
         shutil.rmtree(self.data_dir)
-        os.mkdir(self.data_dir, mode=0700)
+        os.mkdir(self.data_dir, 0700)
 
     def initialize(self):
         logger.info("Initializing cluster in %s" % self.data_dir)
