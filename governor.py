@@ -49,6 +49,8 @@ if postgresql.data_directory_empty():
                 continue
             if postgresql.sync_from_leader(leader):
                 postgresql.write_recovery_conf(leader)
+                # Give the leader time to create the replication slot
+                time.sleep(config["loop_wait"] * 2)
                 postgresql.start()
                 synced_from_leader = True
             else:
