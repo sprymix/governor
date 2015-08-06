@@ -228,7 +228,7 @@ primary_conninfo = 'user=%(user)s password=%(password)s host=%(hostname)s port=%
         self.query("CREATE USER \"%s\" WITH REPLICATION ENCRYPTED PASSWORD '%s';" % (self.replication["username"], self.replication["password"]))
 
     def xlog_position(self):
-        return self.query("SELECT pg_last_xlog_replay_location() - '0/0000000'::pg_lsn;").fetchone()[0]
+        return self.query("SELECT pg_last_xlog_replay_location() - '0/0000000'::pg_lsn;").fetchone()[0] or 0
 
     def last_operation(self):
         return self.query("SELECT pg_current_xlog_location() - '0/00000'::pg_lsn;").fetchone()[0]
