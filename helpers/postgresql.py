@@ -62,10 +62,10 @@ class Postgresql:
         logger.info("Initializing cluster in %s" % self.data_dir)
         if os.system("initdb -D %s" % self.data_dir) == 0:
             # start Postgres without options to setup replication user indepedent of other system settings
+            self.write_pg_hba()
             os.system("pg_ctl start -w -D %s -o '%s'" % (self.data_dir, self.server_options()))
             self.create_replication_user()
             os.system("pg_ctl stop -w -m fast -D %s" % self.data_dir)
-            self.write_pg_hba()
 
             return True
         else:
@@ -164,12 +164,13 @@ class Postgresql:
     def write_pg_hba(self):
         pg_hba = self.params.get('hba_file',
                                  '{}/pg_hba.conf'.format(self.data_dir))
-        with open(pg_hba, "a"):
+        with open(pg_hba, "a") as f:
             f.write("host replication %(username)s %(network)s md5" %
                     {"username": self.replication["username"],
                      "network": self.replication["network"]})
 
             for entry in self.config.get('hba_entries') or []:
+                f.write('\n')
                 f.write(entry)
 
     def write_recovery_conf(self, leader_hash):
