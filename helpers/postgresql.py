@@ -1,5 +1,6 @@
 import os, psycopg2, re, time
 import logging
+import shutil
 
 from urlparse import urlparse
 
@@ -58,6 +59,10 @@ class Postgresql:
     def data_directory_empty(self):
         return not os.path.exists(self.data_dir) or os.listdir(self.data_dir) == []
 
+    def drop_cluster(self):
+        shutil.rmtree(self.data_dir)
+        os.mkdir(self.data_dir, mode=0700)
+
     def initialize(self):
         logger.info("Initializing cluster in %s" % self.data_dir)
         if os.system("initdb -D %s" % self.data_dir) == 0:
@@ -105,8 +110,8 @@ class Postgresql:
 
         return os.system("pg_ctl start -w -D %s -o '%s'" % (self.data_dir, self.server_options())) == 0
 
-    def stop(self):
-        return os.system("pg_ctl stop -w -D %s -m fast -w" % self.data_dir) != 0
+    def stop(self, mode='fast'):
+        return os.system("pg_ctl stop -w -D %s -m %s -w" % (self.data_dir, mode)) != 0
 
     def reload(self):
         return os.system("pg_ctl reload -w -D %s" % self.data_dir) == 0
@@ -209,8 +214,15 @@ primary_conninfo = 'user=%(user)s password=%(password)s host=%(hostname)s port=%
         return os.system("pg_ctl promote -w -D %s" % self.data_dir) == 0
 
     def demote(self, leader):
+        logger.info("Stopping server")
+        if not self.stop('fast'):
+            self.stop('immediate')
+        logger.info("Dropping cluster")
+        self.drop_cluster()
+        logger.info("Syncing from leader")
+        self.sync_from_leader(leader)
         self.write_recovery_conf(leader)
-        self.restart()
+        self.start()
 
     def create_replication_user(self):
         self.query("CREATE USER \"%s\" WITH REPLICATION ENCRYPTED PASSWORD '%s';" % (self.replication["username"], self.replication["password"]))
