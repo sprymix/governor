@@ -52,12 +52,18 @@ class Etcd:
             raise helpers.errors.CurrentLeaderError("Etcd is not responding properly")
 
     def members(self):
-        try:
-            members = []
+        members = []
 
+        try:
             r = self.get_client_path("/members?recursive=true")
-            for node in r["node"]["nodes"]:
-                members.append({"hostname": node["key"].split('/')[-1], "address": node["value"]})
+            try:
+                nodes = r["node"]["nodes"]
+            except KeyError:
+                pass
+            else:
+                for node in nodes:
+                    members.append({"hostname": node["key"].split('/')[-1],
+                                    "address": node["value"]})
 
             return members
         except urllib2.HTTPError as e:

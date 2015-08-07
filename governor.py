@@ -64,10 +64,20 @@ while True:
 
     # create replication slots
     if postgresql.is_leader():
-        for node in etcd.get_client_path("/members?recursive=true")["node"]["nodes"]:
-            member = node["key"].split('/')[-1]
-            if member != postgresql.name:
-                postgresql.query("DO LANGUAGE plpgsql $$DECLARE somevar VARCHAR; BEGIN SELECT slot_name INTO somevar FROM pg_replication_slots WHERE slot_name = '%(slot)s' LIMIT 1; IF NOT FOUND THEN PERFORM pg_create_physical_replication_slot('%(slot)s'); END IF; END$$;" % {"slot": member})
+        for member in etcd.members():
+            if member['hostname'] != postgresql.name:
+                postgresql.query("""
+                    DO LANGUAGE plpgsql $$
+                    DECLARE somevar VARCHAR;
+                    BEGIN
+                        SELECT slot_name INTO somevar
+                        FROM pg_replication_slots
+                        WHERE slot_name = '%(slot)s'
+                        LIMIT 1;
+                        IF NOT FOUND THEN
+                            PERFORM pg_create_physical_replication_slot('%(slot)s');
+                        END IF;
+                    END$$;""" % {"slot": member['hostname']})
 
     etcd.touch_member(postgresql.name, postgresql.connection_string)
 
