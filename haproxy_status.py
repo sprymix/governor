@@ -25,6 +25,8 @@ class StatusHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write('\r\n')
         return
+    def log_message(self, format, *args):
+        pass
 
 try:
     from BaseHTTPServer import HTTPServer
