@@ -75,7 +75,6 @@ class Ha:
                         else:
                             return "no action.  i am the leader with the lock"
                     else:
-                        logger.info("does not have lock")
                         if self.state_handler.is_leader():
                             self.state_handler.demote(self.etcd, self.fetch_current_leader())
                             return "demoting self because i do not have the lock and i was a leader"
