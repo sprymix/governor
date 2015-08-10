@@ -18,12 +18,17 @@ class StatusHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         return self.do_ANY()
     def do_ANY(self):
-        if postgresql.name == etcd.current_leader()["hostname"]:
-          self.send_response(200)
-        else:
-          self.send_response(503)
-        self.end_headers()
-        self.wfile.write('\r\n')
+        try:
+            leader = etcd.current_leader()
+            if leader and postgresql.name == leader["hostname"]:
+              self.send_response(200)
+            else:
+              self.send_response(503)
+            self.end_headers()
+            self.wfile.write('\r\n')
+        except socket.error:
+            # we do not care for errors here
+            pass
         return
     def log_message(self, format, *args):
         pass
