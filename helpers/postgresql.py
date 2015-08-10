@@ -213,7 +213,7 @@ primary_conninfo = 'user=%(user)s password=%(password)s host=%(hostname)s port=%
     def promote(self):
         return os.system("pg_ctl promote -w -D %s" % self.data_dir) == 0
 
-    def demote(self, leader):
+    def demote(self, state_store, leader):
         logger.info("Stopping server")
         if not self.stop('fast'):
             self.stop('immediate')
@@ -222,6 +222,10 @@ primary_conninfo = 'user=%(user)s password=%(password)s host=%(hostname)s port=%
         logger.info("Syncing from leader")
         self.sync_from_leader(leader)
         self.write_recovery_conf(leader)
+        # Make sure we are present in members list so that
+        # a proper replication slot is created.
+        state_store.touch_member(self.name, self.connection_string)
+        time.sleep(5)
         self.start()
 
     def create_replication_user(self):

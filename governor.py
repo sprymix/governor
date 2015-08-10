@@ -18,11 +18,6 @@ etcd = Etcd(config["etcd"])
 postgresql = Postgresql(config["postgresql"])
 ha = Ha(postgresql, etcd)
 
-# stop postgresql on script exit
-def stop_postgresql():
-    postgresql.stop()
-atexit.register(stop_postgresql)
-
 # wait for etcd to be available
 etcd_ready = False
 while not etcd_ready:
@@ -56,10 +51,20 @@ if postgresql.data_directory_empty():
             else:
                 time.sleep(5)
 else:
-    postgresql.follow_no_leader()
+    leader = etcd.current_leader()
+    if leader is not None:
+        if leader['hostname'] == postgresql.name:
+            # still a leader
+            postgresql.start()
+        else:
+            postgresql.follow_the_leader(leader)
+    else:
+        postgresql.follow_no_leader()
     postgresql.start()
 
+
 while True:
+    etcd.touch_member(postgresql.name, postgresql.connection_string)
     logging.info(ha.run_cycle())
 
     # create replication slots
@@ -78,7 +83,5 @@ while True:
                             PERFORM pg_create_physical_replication_slot('%(slot)s');
                         END IF;
                     END$$;""" % {"slot": member['hostname']})
-
-    etcd.touch_member(postgresql.name, postgresql.connection_string)
 
     time.sleep(config["loop_wait"])

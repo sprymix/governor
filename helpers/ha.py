@@ -49,7 +49,7 @@ class Ha:
                             return "acquired session lock as a leader"
                         else:
                             if self.state_handler.is_leader():
-                                self.state_handler.demote(self.fetch_current_leader())
+                                self.state_handler.demote(self.etcd, self.fetch_current_leader())
                                 return "demoted self due after trying and failing to obtain lock"
                             else:
                                 self.state_handler.follow_the_leader(self.fetch_current_leader())
@@ -59,7 +59,7 @@ class Ha:
                             self.state_handler.follow_no_leader()
                             return "waiting on leader to be elected because i am not the healthiest node"
                         elif self.state_handler.is_leader():
-                            self.state_handler.demote(self.fetch_current_leader())
+                            self.state_handler.demote(self.etcd, self.fetch_current_leader())
                             return "demoting self because i am not the healthiest node"
                         else:
                             self.state_handler.follow_the_leader(self.fetch_current_leader())
@@ -77,7 +77,7 @@ class Ha:
                     else:
                         logger.info("does not have lock")
                         if self.state_handler.is_leader():
-                            self.state_handler.demote(self.fetch_current_leader())
+                            self.state_handler.demote(self.etcd, self.fetch_current_leader())
                             return "demoting self because i do not have the lock and i was a leader"
                         else:
                             self.state_handler.follow_the_leader(self.fetch_current_leader())
