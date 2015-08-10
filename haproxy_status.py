@@ -27,6 +27,12 @@ class StatusHandler(BaseHTTPRequestHandler):
         return
     def log_message(self, format, *args):
         pass
+    def finish(self):
+        try:
+            BaseHTTPRequestHandler.finish(self)
+        except socket.error:
+            # we do not care for errors here
+            pass
 
 try:
     from BaseHTTPServer import HTTPServer
